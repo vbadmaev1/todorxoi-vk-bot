@@ -93,6 +93,11 @@ class FakeVk:
             return web.json_response({"response": {
                 "server": self.base + "/lp", "key": f"key{len(self.calls)}", "ts": str(self._ts),
             }})
+        if name == "groups.getLongPollSettings":
+            return web.json_response({"response": {
+                "is_enabled": False, "api_version": "5.131",
+                "events": {"message_new": 1, "message_event": 0, "wall_post_new": 0},
+            }})
         if name in ("groups.setLongPollSettings", "groups.setSettings"):
             return self._error(15, "Access denied: no access to call this method")
         if name == "messages.send":

@@ -136,11 +136,49 @@ async def _setup_group(api: VkApi, group_id: int) -> None:
         )
 
 
+async def _check_longpoll(api: VkApi, group_id: int) -> None:
+    """Самая частая причина «бот молчит»: в сообществе выключен Long Poll
+    или не отмечено событие «Входящее сообщение». Ошибок тогда нет нигде —
+    VK просто не присылает событий. Проверяем и пишем в лог прямо."""
+    try:
+        s = await api.call("groups.getLongPollSettings", group_id=group_id)
+    except VkApiError as exc:
+        log.warning("не удалось прочитать настройки Long Poll: %s", exc)
+        return
+    events = s.get("events") or {}
+    missing = [
+        title for key, title in (
+            ("message_new", "«Входящее сообщение»"),
+            ("message_event", "«Действие с сообщением»"),
+        ) if not events.get(key)
+    ]
+    log.info(
+        "Long Poll: %s, версия API %s, события: %s",
+        "включён" if s.get("is_enabled") else "ВЫКЛЮЧЕН",
+        s.get("api_version"),
+        ", ".join(k for k, v in events.items() if v) or "никаких",
+    )
+    if not s.get("is_enabled"):
+        log.error(
+            "Long Poll в сообществе выключен — сообщения до бота не дойдут. "
+            "Управление → Работа с API → Long Poll API → «Включён»."
+        )
+    if missing:
+        log.error(
+            "В Long Poll не отмечены события %s — бот их не получит. "
+            "Управление → Работа с API → Long Poll API → Типы событий.",
+            " и ".join(missing),
+        )
+
+
 async def _run(dispatcher: Dispatcher, api: VkApi, group_id: int, workers: int) -> None:
     sem = asyncio.Semaphore(workers)
     tasks = set()
 
     async def handle(update: dict) -> None:
+        obj = update.get("object") or {}
+        msg = obj.get("message") or obj
+        log.info("событие %s от %s", update.get("type"), msg.get("from_id") or msg.get("user_id"))
         async with sem:
             await dispatcher.feed(update)
 
@@ -171,12 +209,21 @@ async def main() -> None:
     api = VkApi(config.vk_token)
 
     try:
-        group = await _group(api, config)
+        try:
+            group = await _group(api, config)
+        except VkApiError as exc:
+            if exc.code in (5, 27):
+                log.error(
+                    "VK не принял ключ (%s). Нужен ключ доступа СООБЩЕСТВА: "
+                    "сообщество → Управление → Работа с API → Ключи доступа.", exc,
+                )
+            raise
         group_id = int(group["id"])
         log.info("сообщество: %s (id %s, vk.com/%s)", group.get("name"), group_id,
                  group.get("screen_name", f"club{group_id}"))
         if config.setup_longpoll:
             await _setup_group(api, group_id)
+        await _check_longpoll(api, group_id)
 
         if config.warmup:
             await _warmup()

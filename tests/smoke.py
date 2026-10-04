@@ -415,12 +415,24 @@ async def check_longpoll(vk: FakeVk, api: VkApi) -> None:
 
 async def check_startup(vk: FakeVk, api: VkApi, config: Config) -> None:
     print("\nстарт")
-    from bot.main import _group, _setup_group
+    import logging
+
+    from bot.main import _check_longpoll, _group, _setup_group
 
     group = await _group(api, config)
     check(group["id"] == GROUP_ID, "сообщество определено по ключу")
     await _setup_group(api, GROUP_ID)  # фейк отвечает «нет прав» — бот не падает
     check(True, "без прав на настройку сообщества бот продолжает")
+
+    records = []
+    handler = logging.Handler()
+    handler.emit = records.append
+    logging.getLogger("todorxoi").addHandler(handler)
+    await _check_longpoll(api, GROUP_ID)
+    logging.getLogger("todorxoi").removeHandler(handler)
+    errors = [r.getMessage() for r in records if r.levelno >= logging.ERROR]
+    check(any("выключен" in e for e in errors), "выключенный Long Poll — ошибка в логе")
+    check(any("Действие с сообщением" in e for e in errors), "не отмеченное событие — ошибка в логе")
 
 
 async def main() -> int:
