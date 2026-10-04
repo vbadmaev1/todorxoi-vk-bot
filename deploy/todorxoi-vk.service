@@ -1,0 +1,27 @@
+# Вариант без Docker: systemd-юнит для обычного VPS.
+#
+#   sudo cp deploy/todorxoi-vk.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now todorxoi-vk
+#   journalctl -u todorxoi-vk -f        # логи
+#
+# Поправьте User и пути под свою машину.
+
+[Unit]
+Description=Todo Bichig VK bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=todorxoi
+WorkingDirectory=/opt/todorxoi-vk
+EnvironmentFile=/opt/todorxoi-vk/.env
+ExecStart=/opt/todorxoi-vk/.venv/bin/python -m bot.main
+Restart=always
+RestartSec=5
+# бот сетевой и однопоточный, лишние ресурсы ему не нужны
+MemoryMax=1500M
+
+[Install]
+WantedBy=multi-user.target

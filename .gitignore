@@ -1,0 +1,32 @@
+.env
+.venv/
+venv/
+env/
+
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# собранные данные бота: база, лог фидбэка, выгрузки
+data/
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+*.jsonl
+
+# картинки, сгенерированные при ручных прогонах
+demo_*.png
+todo_output.png
+
+.DS_Store
+.idea/
+.vscode/
+
+# промежуточный fp32 от tools/export_ocr_onnx.py — боту не нужен
+model/*_fp32.onnx
+
+# полные выгрузки сомнительных случаев — пересобираются eval8.py
+research/**/uncertain_[0-9]*.tsv
