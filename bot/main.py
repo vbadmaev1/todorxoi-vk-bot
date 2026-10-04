@@ -189,6 +189,17 @@ async def _run(dispatcher: Dispatcher, api: VkApi, group_id: int, workers: int) 
                 tasks.add(task)
                 task.add_done_callback(tasks.discard)
         except VkApiError as exc:
+            if exc.code == 15 and exc.method == "groups.getLongPollServer":
+                # права ключа не меняются — нужен новый ключ, перезапуск не поможет
+                log.error(
+                    "У ключа нет права «Управление сообществом» — без него VK не "
+                    "даёт Long Poll. Создайте новый ключ: сообщество → Управление → "
+                    "Работа с API → Ключи доступа → Создать ключ, отметьте "
+                    "«Управление сообществом», «Сообщения сообщества», "
+                    "«Фотографии», «Документы». Впишите его в VK_TOKEN и "
+                    "перезапустите бота."
+                )
+                raise SystemExit(1)
             if exc.code in (5, 27):  # ключ неверный или отозван — перезапуск не поможет
                 raise
             log.exception("long poll упал — перезапуск через 5 с")

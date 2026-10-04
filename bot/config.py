@@ -42,7 +42,8 @@ class Config:
     # id сообщества; пусто — бот спросит его у VK по ключу
     group_id: int = 0
     # включить Long Poll и нужные события в настройках сообщества на старте
-    # (ключу нужно право «управление сообществом»; без него — инструкция в лог)
+    # (право ключа «управление сообществом» нужно и так: без него VK не даёт
+    # Long Poll вовсе)
     setup_longpoll: bool = True
     data_dir: Path = BASE_DIR / "data"
     db_path: Path = BASE_DIR / "data" / "todorxoi.sqlite3"
