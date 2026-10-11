@@ -85,6 +85,14 @@ def font_path(key: str) -> Path:
 MAX_SPAN = 2        # сколько букв латиницы может лечь в один кусок
 MIN_CTX_COUNT = 3   # ниже этого контекстное правило считаем ненадёжным
 
+# Долгое «a» на конце слова после согласного в словаре пишется одним
+# глифом «Ә» (крючок вправо), а не «а»+«ь»+«ә» (крючок влево). Вес куска
+# «aˉ» в unit_rate считан по всем позициям и в конце слова проигрывает
+# двум буквам по отдельности, поэтому здесь его выбор закреплён.
+FINAL_LONG_A = "aˉ"
+_VOWELS = "aeiouöü"
+_FORCE_BONUS = 100.0
+
 # долгота выносится отдельным символом: так её удобно выравнивать с
 # мягким знаком, которым она записывается в шрифте
 _MACRON_SPLIT = {
@@ -211,6 +219,9 @@ class ClearScriptRules:
                 score = (best[j][0]
                          + math.log(self.unit_rate.get(unit, 1e-3) + 1e-9)
                          + math.log(count / sum(variants.values())))
+                if (unit == FINAL_LONG_A and end
+                        and (j == 0 or s[j - 1] not in _VOWELS)):
+                    score += _FORCE_BONUS
                 if score > best[j + k][0]:
                     best[j + k] = (score, (j, chunk))
         if best[n][1] is None:
